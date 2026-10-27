@@ -236,7 +236,6 @@ def main():
     overhead_ms = average_gateway_ms - average_tool_ms
 
     print("\nEVALUATION RESULTS")
-    print("------------------")
     print(f"Detection Accuracy: {accuracy:.2f}%")
     print(f"False Positive Rate: {fpr:.2f}%")
     print(
