@@ -1,3 +1,4 @@
+import time
 
 from monitor.repetition_detector import RepetitionDetector
 from monitor.cycle_detector import CycleDetector
@@ -24,6 +25,7 @@ class ActionGateway:
         self.controller = Controller()
 
     def submit(self, action):
+        t_start = time.perf_counter()
         repetition = self.repetition_detector.check(action)
         cycle = self.cycle_detector.check(action)
         semantic = self.semantic_detector.check(action)
@@ -76,8 +78,19 @@ class ActionGateway:
                 "message": "Action rejected: " + decision,
             }
 
+        latency_ms = (time.perf_counter() - t_start) * 1000
+        calc_tokens = action.get("token_count")
+        if calc_tokens is None:
+            calc_tokens = max(1, len(str(action.get("arguments", ""))) // 4)
+
         self.logger.log(
-            action, result, assessment["risk_score"], decision, assessment["reasons"]
+            action,
+            result,
+            assessment["risk_score"],
+            decision,
+            assessment["reasons"],
+            token_count=calc_tokens,
+            latency_ms=round(latency_ms, 3),
         )
 
         return {

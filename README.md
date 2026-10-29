@@ -16,9 +16,23 @@ To build a monitoring layer that detects runaway agent behavior, controls risky 
 
 The system follows this workflow:
 
-`Simulated Agent → Action Gateway → Monitoring Detectors → Risk Engine → Controller → Mock Tools`
+```
+google.adk LlmAgent
+      │  (before_tool_callback, after_tool_callback)
+      ▼
+ TelemetryMiddleware  ────────────────────────────────────────────────┐
+      │ (OTel spans · token counts · latency · CB state)              │
+      ▼                                                               ▼
+ ActionGateway (existing)                              OTel Console + traces.jsonl
+      │
+  [5 detectors] → RiskEngine → Controller
+      │                │
+      ▼                ▼
+  MockTools    CircuitBreaker
+               (CLOSED → OPEN → HALF_OPEN)
+```
 
-The Event Logger stores action details, risk scores, decisions, and reasons in an SQLite database.
+The Event Logger stores action details, risk scores, decisions, token counts, and latency in an SQLite database.
 
 ## Working Principle
 
@@ -44,6 +58,9 @@ The Event Logger stores action details, risk scores, decisions, and reasons in a
 
 ```text
 os_project/
+├── adk_agent/
+│   ├── __init__.py
+│   └── runaway_agent.py        # google.adk LlmAgent integration
 ├── agent/
 │   └── simulated_agent.py
 ├── gateway/
@@ -54,20 +71,30 @@ os_project/
 │   ├── frequency_detector.py
 │   ├── progress_monitor.py
 │   └── semantic_detector.py
+├── telemetry/
+│   ├── __init__.py
+│   ├── otel_setup.py           # OpenTelemetry bootstrap
+│   └── telemetry_middleware.py # OTel span wrapper for ActionGateway
 ├── tests/
-│   └── test_gateway.py
+│   ├── test_gateway.py
+│   ├── test_circuit_breaker.py # CircuitBreaker unit tests
+│   └── test_telemetry.py      # Telemetry integration tests
+├── circuit_breaker.py          # CLOSED/OPEN/HALF_OPEN safeguard
 ├── controller.py
 ├── risk_engine.py
 ├── mock_tools.py
 ├── event_logger.py
 ├── event_schema.py
-├── run.py
+├── run.py                      # Original scenario runner
+├── run_adk.py                  # ADK agent entry point
+├── evaluation.py
+├── requirements.txt
 └── monitor.db
 ```
 
 ## Setup and Installation
 
-**Requirements:** Python 3.14.4 and pip.
+**Requirements:** Python 3.10+ and pip.
 
 1. Clone the repository and move into the project directory.
 
@@ -78,17 +105,15 @@ python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-3. Install the required libraries:
+3. Install all dependencies (google-adk, OpenTelemetry, scikit-learn, rich):
 
 ```bash
-pip install pandas numpy scikit-learn
+pip install -r requirements.txt
 ```
-
-If a `requirements.txt` file is available, use `pip install -r requirements.txt` instead.
 
 ## Running the Project
 
-Run a scenario using:
+### Original scenario runner
 
 ```bash
 python run.py --scenario normal --db normal.db
@@ -104,7 +129,27 @@ python run.py --scenario semantic --db semantic.db
 python run.py --scenario progress --db progress.db
 ```
 
-Run the unit tests:
+### ADK Agent (mock mode — no API key required)
+
+Runs the `google.adk` LlmAgent layer with the full telemetry + circuit-breaker stack:
+
+```bash
+python run_adk.py --scenario normal
+python run_adk.py --scenario repetitive
+python run_adk.py --scenario cyclic
+```
+
+OTel traces are appended to `traces.jsonl`. Events are logged to `adk_monitor.db`.
+
+### Live Gemini mode (optional)
+
+```bash
+export GOOGLE_API_KEY=your-key-here
+export GOOGLE_MODEL=gemini-2.5-flash
+python run_adk.py --scenario normal
+```
+
+Run all unit tests:
 
 ```bash
 python -m unittest discover -s tests -v

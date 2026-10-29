@@ -1,0 +1,23 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.Zone.Identifier
+
+# Virtual Environments
+.venv/
+venv/
+ENV/
+
+# Traces and run logs
+traces.jsonl
+*.log
+
+# SQLite databases generated during test runs
+adk_monitor.db
+test_*.db
+
+# Antigravity IDE / editor artifacts
+.gemini/
+.idea/
+.vscode/

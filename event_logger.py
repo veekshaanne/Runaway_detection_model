@@ -27,7 +27,9 @@ class EventLogger:
                     result TEXT,
                     risk_score REAL NOT NULL,
                     decision TEXT NOT NULL,
-                    reasons TEXT NOT NULL DEFAULT '[]'
+                    reasons TEXT NOT NULL DEFAULT '[]',
+                    token_count INTEGER NOT NULL DEFAULT 0,
+                    latency_ms REAL NOT NULL DEFAULT 0.0
                 )
                 """
             )
@@ -45,7 +47,20 @@ class EventLogger:
                     "ADD COLUMN reasons TEXT NOT NULL DEFAULT '[]'"
                 )
 
-    def log(self, action, result, risk_score, decision, reasons=None):
+            if "token_count" not in columns:
+                conn.execute(
+                    "ALTER TABLE action_events "
+                    "ADD COLUMN token_count INTEGER NOT NULL DEFAULT 0"
+                )
+
+            if "latency_ms" not in columns:
+                conn.execute(
+                    "ALTER TABLE action_events "
+                    "ADD COLUMN latency_ms REAL NOT NULL DEFAULT 0.0"
+                )
+
+    def log(self, action, result, risk_score, decision, reasons=None,
+            token_count: int = 0, latency_ms: float = 0.0):
         if reasons is None:
             reasons = []
 
@@ -54,8 +69,9 @@ class EventLogger:
                 """
                 INSERT INTO action_events
                 (task_id, action_id, action_type, target, arguments,
-                 timestamp, result, risk_score, decision, reasons)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 timestamp, result, risk_score, decision, reasons,
+                 token_count, latency_ms)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     action.get("task_id", "task-1"),
@@ -71,5 +87,7 @@ class EventLogger:
                     float(risk_score),
                     decision,
                     json.dumps(reasons),
+                    int(token_count),
+                    float(latency_ms),
                 ),
             )

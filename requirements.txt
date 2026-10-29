@@ -1,0 +1,16 @@
+# Core ML / NLP
+scikit-learn>=1.9.1
+numpy>=2.5.4
+scipy>=1.18.1
+
+# Google Agentic SDK (installs google-genai and opentelemetry-api/sdk as deps)
+google-adk>=2.13.0
+google-genai>=2.33.0
+
+# OpenTelemetry — version range must stay compatible with google-adk's pinned OTel
+opentelemetry-api>=1.44.0
+opentelemetry-sdk>=1.44.0
+opentelemetry-exporter-otlp>=1.44.0
+
+# Developer experience
+rich>=13.9.4
